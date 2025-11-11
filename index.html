@@ -1,0 +1,54 @@
+<!doctype html>
+const resp = await fetch(WEB_APP_URL, { method: 'POST', body: formData });
+if(!resp.ok){ throw new Error(`Upload failed: ${resp.status}`); }
+return await resp.json();
+}
+
+
+form.addEventListener('submit', async (e)=>{
+e.preventDefault();
+setStatus('', '');
+if(filesState.length === 0){ setStatus('Please add at least one file.'); return; }
+
+
+sendBtn.disabled = true;
+progressWrap.classList.remove('hidden');
+progressWrap.setAttribute('aria-hidden','false');
+
+
+try {
+// Build form data — supports multiple files
+const fd = new FormData();
+const data = new FormData(form);
+for (const [k,v] of data.entries()) fd.append(k, v);
+filesState.forEach(f => fd.append('files', f, f.name));
+
+
+// Show pseudo-progress (Apps Script doesn’t stream progress). Optional: chunking can be added.
+let pct = 5; const ticker = setInterval(()=>{ pct = Math.min(98, pct+1); progressBar.style.width = pct + '%'; }, 120);
+
+
+const result = await uploadBatch(fd);
+
+
+clearInterval(ticker);
+progressBar.style.width = '100%';
+if(result && result.ok){
+setStatus(`✅ Uploaded ${result.saved || 0} file(s). Thank you!`, 'ok');
+list.innerHTML = '';
+filesState.length = 0;
+form.reset();
+} else {
+setStatus(result && result.error ? `Upload error: ${result.error}` : 'Upload error.', 'err');
+}
+} catch(err){
+console.error(err);
+setStatus(err.message || 'Network error.', 'err');
+} finally {
+sendBtn.disabled = false;
+setTimeout(resetProgress, 900);
+}
+});
+</script>
+</body>
+</html>
